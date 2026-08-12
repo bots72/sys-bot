@@ -19,8 +19,11 @@ const {
   ButtonStyle,
   EmbedBuilder,
   PermissionsBitField,
-  AuditLogEvent 
+  AuditLogEvent,
+  AttachmentBuilder
 } = require('discord.js');
+
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 const client = new Client({
   intents: [
@@ -29,7 +32,8 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildBans,
-    GatewayIntentBits.GuildModeration
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildVoiceStates
   ],
   partials: [Partials.Channel, Partials.Message, Partials.GuildMember, Partials.User, Partials.GuildBan]
 });
@@ -58,6 +62,10 @@ const picLiveRoles = {
 const userMessageLogs = new Map();
 const savedRolesMap = new Map();
 
+// قواعد بيانات التلفيل والنظام الجديد
+const userLevels = new Map(); // { [userId]: { chatXp, chatLevel, voiceXp, voiceLevel } }
+const voiceTimers = new Map(); // { [userId]: timestamp }
+
 const MUTED_ROLE_ID = '1535504124622143508'; 
 const JAIL_ROLE_ID = '1535376614735609977';  
 const TIME_ROLE_ID = '1535522564061929512';  
@@ -70,6 +78,7 @@ const OS_MIN_ROLE_ID = '1535724113690099843';
 const TARGET_GUILD_ID = '1535375474656673874';
 const HERE_ROLE_ID = '1535822047907811398';
 const AUTO_JOIN_ROLE_ID = '1535724553563668561';
+const PULL_ROLE_ID = '1536989468492435496'; // رول أمر سحب
 
 const COLOR_CHANNEL_ID = '1535406298781192292'; 
 const PIC_LIVE_CHANNEL_ID = '1535490093358252074'; 
@@ -317,6 +326,37 @@ client.on('guildBanRemove', async ban => {
   } catch (e) {}
 });
 
+// تتبع وقت الصوت لكل دقيقة (+10 XP)
+client.on('voiceStateUpdate', (oldState, newState) => {
+  const userId = newState.member?.id || oldState.member?.id;
+  if (!userId) return;
+
+  if (!newState.channelId && oldState.channelId) {
+    voiceTimers.delete(userId);
+  } else if (newState.channelId && !oldState.channelId) {
+    voiceTimers.set(userId, Date.now());
+  }
+});
+
+setInterval(() => {
+  const now = Date.now();
+  voiceTimers.forEach((joinedTime, userId) => {
+    if (now - joinedTime >= 60000) { // كل دقيقة
+      voiceTimers.set(userId, now);
+      if (!userLevels.has(userId)) {
+        userLevels.set(userId, { chatXp: 0, chatLevel: 0, voiceXp: 0, voiceLevel: 0 });
+      }
+      const data = userLevels.get(userId);
+      data.voiceXp += 10;
+      let nextVoiceXpNeeded = (data.voiceLevel + 1) * 100;
+      if (data.voiceXp >= nextVoiceXpNeeded) {
+        data.voiceXp -= nextVoiceXpNeeded;
+        data.voiceLevel += 1;
+      }
+    }
+  });
+}, 10000);
+
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
@@ -342,29 +382,215 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  if (message.member && message.member.roles.cache.has(NO_ROLE_ID)) {
-    const contentLowerCheck = message.content.toLowerCase().trim();
-    const argsCheck = message.content.trim().split(/ +/);
-    const commandCheck = argsCheck[0];
-    if (
-      contentLowerCheck.startsWith('هير') || 
-      contentLowerCheck === 'setup' || 
-      contentLowerCheck.startsWith('delete no role') || 
-      contentLowerCheck.startsWith('no role') || 
-      contentLowerCheck === 'فحص النو رول' || 
-      contentLowerCheck.startsWith('سحب رول') || 
-      contentLowerCheck.startsWith('رول') || 
-      contentLowerCheck === 'امسح لي' || 
-      contentLowerCheck.startsWith('delete role') || 
-      contentLowerCheck.startsWith('crator role') || 
-      ['باند', 'طياره', 'فك', 'برا', 'سجن', 'لاسجن', 'اص', 'تكلم', 'تايم', 'لاتايم', 'مسح', 'قفل', 'فتح', 'فحص'].includes(commandCheck)
-    ) {
+  // نظام الشات XP (كل رسالة تزيد 2 XP)
+  if (!userLevels.has(userId)) {
+    userLevels.set(userId, { chatXp: 0, chatLevel: 0, voiceXp: 0, voiceLevel: 0 });
+  }
+  const uData = userLevels.get(userId);
+  uData.chatXp += 2;
+  let nextChatXpNeeded = (uData.chatLevel + 1) * 300;
+  if (uData.chatXp >= nextChatXpNeeded) {
+    uData.chatXp -= nextChatXpNeeded;
+    uData.chatLevel += 1;
+  }
+
+  // أمر ID والرسم عبر Canvas
+  const contentLower = message.content.toLowerCase().trim();
+
+  if (contentLower === 'id' || contentLower === 'آي دي' || contentLower === 'اي دي') {
+    try {
+      const targetM = await getTargetMember(message) || message.member;
+      const targetData = userLevels.get(targetM.id) || { chatXp: 0, chatLevel: 0, voiceXp: 0, voiceLevel: 0 };
+
+      // حساب الرانك التلقائي حسب عدد المتكلمين الحقيقيين في السيرفر
+      let totalChatSpeakers = 0;
+      let totalVoiceSpeakers = 0;
+      let userChatRank = 1;
+      let userVoiceRank = 1;
+
+      // ترتيب الحسابات
+      const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 300 + b[1].chatXp) - (a[1].chatLevel * 300 + a[1].chatXp));
+      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + a[1].voiceXp));
+
+      totalChatSpeakers = Math.max(sortedByChat.length, targetData.chatLevel > 0 || targetData.chatXp > 0 ? 1 : 0);
+      totalVoiceSpeakers = Math.max(sortedByVoice.length, targetData.voiceLevel > 0 || targetData.voiceXp > 0 ? 1 : 0);
+
+      const foundChatIdx = sortedByChat.findIndex(item => item[0] === targetM.id);
+      if (foundChatIdx !== -1) userChatRank = foundChatIdx + 1;
+      else userChatRank = totalChatSpeakers > 0 ? totalChatSpeakers + 1 : 1;
+
+      const foundVoiceIdx = sortedByVoice.findIndex(item => item[0] === targetM.id);
+      if (foundVoiceIdx !== -1) userVoiceRank = foundVoiceIdx + 1;
+      else userVoiceRank = totalVoiceSpeakers > 0 ? totalVoiceSpeakers + 1 : 1;
+
+      // رسم الصورة مطابقة تماماً للصورة المعروضة
+      const canvas = createCanvas(1200, 480);
+      const ctx = canvas.getContext('2d');
+
+      // الخلفية الأساسية (صورة خلفية افتراضية أو لون)
+      ctx.fillStyle = '#1e2229';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      try {
+        const bgImage = await loadImage('https://cdn.discordapp.com/attachments/1535193306701504532/1535533823956221952/image.png').catch(() => null);
+        if (bgImage) {
+          ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+        }
+      } catch (e) {}
+
+      // الصندوق الشفاف الرئيسي للدردشة والصوت
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.roundRect(40, 40, 780, 400, 20);
+      ctx.fill();
+
+      // النصوص والعناوين
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('Chat Level', 140, 115);
+      ctx.fillText('Voice Level', 140, 310);
+
+      // أيقونات الدردشة والصوت الدائرية اليسرى
+      ctx.fillStyle = '#2b2d31';
+      ctx.beginPath();
+      ctx.arc(80, 105, 35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(80, 300, 35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // شريط التقدم للدردشة
+      ctx.fillStyle = '#3f4248';
+      ctx.beginPath();
+      ctx.roundRect(140, 150, 460, 50, 25);
+      ctx.fill();
+      
+      let chatMaxXp = (targetData.chatLevel + 1) * 300;
+      let chatBarWidth = Math.min(460, Math.max(20, (targetData.chatXp / chatMaxXp) * 460));
+      ctx.fillStyle = '#e0e0e0';
+      ctx.beginPath();
+      ctx.roundRect(140, 150, chatBarWidth, 50, 25);
+      ctx.fill();
+
+      ctx.fillStyle = '#111214';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${targetData.chatXp} / ${chatMaxXp} XP`, 370, 183);
+
+      // شريط التقدم للصوت
+      ctx.fillStyle = '#3f4248';
+      ctx.beginPath();
+      ctx.roundRect(140, 345, 460, 50, 25);
+      ctx.fill();
+
+      let voiceMaxXp = (targetData.voiceLevel + 1) * 100;
+      let voiceBarWidth = Math.min(460, Math.max(20, (targetData.voiceXp / voiceMaxXp) * 460));
+      ctx.fillStyle = '#e0e0e0';
+      ctx.beginPath();
+      ctx.roundRect(140, 345, voiceBarWidth, 50, 25);
+      ctx.fill();
+
+      ctx.fillStyle = '#111214';
+      ctx.fillText(`${targetData.voiceXp} / ${voiceMaxXp} XP`, 370, 378);
+
+      // بيلز الليفل والرانك للتشات
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#2b2d31';
+      ctx.beginPath();
+      ctx.roundRect(470, 85, 120, 40, 20);
+      ctx.roundRect(605, 85, 150, 40, 20);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(`Level ${targetData.chatLevel}`, 485, 112);
+      ctx.fillText(`Rank #${userChatRank}`, 620, 112);
+
+      // بيلز الليفل والرانك للصوت
+      ctx.fillStyle = '#2b2d31';
+      ctx.beginPath();
+      ctx.roundRect(470, 280, 120, 40, 20);
+      ctx.roundRect(605, 280, 150, 40, 20);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`Level ${targetData.voiceLevel}`, 485, 307);
+      ctx.fillText(`Rank #${userVoiceRank}`, 620, 307);
+
+      // الصندوق الجانبي الأيمن الخاص بصورة المستخدم واسمه
+      ctx.fillStyle = '#2b2d31';
+      ctx.beginPath();
+      ctx.roundRect(850, 40, 310, 400, 25);
+      ctx.fill();
+
+      // صورة العضو الدائرية
+      const avatarUrl = targetM.user.displayAvatarURL({ extension: 'png', size: 256 });
+      try {
+        const avatarImage = await loadImage(avatarUrl);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(1005, 160, 95, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatarImage, 910, 65, 190, 190);
+        ctx.restore();
+      } catch (e) {}
+
+      // اسم المستخدم والـ Discriminator أو الـ ID
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(targetM.user.username, 1005, 300);
+
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillStyle = '#949ba4';
+      ctx.fillText(`#${targetM.user.discriminator || '0'}`, 1005, 335);
+
+      const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'id-card.png' });
+      await message.reply({ files: [attachment] });
+      await message.react('✅').catch(() => {});
+    } catch (err) {
+      await message.react('❌').catch(() => {});
+    }
+    return;
+  }
+
+  // أمر سحب (يتم سحب العضو للروم الصوتي الخاص بك، بشرط امتلاك الرول المخصص)
+  if (contentLower.startsWith('سحب')) {
+    if (!message.member.roles.cache.has(PULL_ROLE_ID) && !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      await message.reply({ content: 'عذراً، لا تمتلك الرول المخصص لاستخدام أمر سحب!', ephemeral: true }).catch(() => {});
       await message.react('❌').catch(() => {});
       return;
     }
-  }
 
-  const contentLower = message.content.toLowerCase().trim();
+    try {
+      const targetMember = await getTargetMember(message);
+      if (!targetMember) {
+        await message.reply({ content: 'الرجاء منشن الشخص المراد سحبه أو الرد على رسالته!', ephemeral: true }).catch(() => {});
+        await message.react('❌').catch(() => {});
+        return;
+      }
+
+      const authorVoiceChannel = message.member.voice.channel;
+      if (!authorVoiceChannel) {
+        await message.reply({ content: 'يجب أن تكون في روم صوتي لكي تستطيع سحب الشخص إليك!', ephemeral: true }).catch(() => {});
+        await message.react('❌').catch(() => {});
+        return;
+      }
+
+      if (!targetMember.voice.channel) {
+        await message.reply({ content: 'الشخص المستهدف ليس في أي روم صوتي حالياً!', ephemeral: true }).catch(() => {});
+        await message.react('❌').catch(() => {});
+        return;
+      }
+
+      await targetMember.voice.setChannel(authorVoiceChannel);
+      await message.react('✅').catch(() => {});
+    } catch (err) {
+      await message.react('❌').catch(() => {});
+    }
+    return;
+  }
 
   if (contentLower.startsWith('هير')) {
     try {
