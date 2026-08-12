@@ -62,9 +62,8 @@ const picLiveRoles = {
 const userMessageLogs = new Map();
 const savedRolesMap = new Map();
 
-// قواعد بيانات التلفيل والنظام الجديد
-const userLevels = new Map(); // { [userId]: { chatXp, chatLevel, voiceXp, voiceLevel } }
-const voiceTimers = new Map(); // { [userId]: timestamp }
+const userLevels = new Map(); 
+const voiceTimers = new Map(); 
 
 const MUTED_ROLE_ID = '1535504124622143508'; 
 const JAIL_ROLE_ID = '1535376614735609977';  
@@ -78,7 +77,7 @@ const OS_MIN_ROLE_ID = '1535724113690099843';
 const TARGET_GUILD_ID = '1535375474656673874';
 const HERE_ROLE_ID = '1535822047907811398';
 const AUTO_JOIN_ROLE_ID = '1535724553563668561';
-const PULL_ROLE_ID = '1536989468492435496'; // رول أمر سحب
+const PULL_ROLE_ID = '1536989468492435496'; 
 
 const COLOR_CHANNEL_ID = '1535406298781192292'; 
 const PIC_LIVE_CHANNEL_ID = '1535490093358252074'; 
@@ -326,7 +325,6 @@ client.on('guildBanRemove', async ban => {
   } catch (e) {}
 });
 
-// تتبع وقت الصوت لكل دقيقة (+10 XP)
 client.on('voiceStateUpdate', (oldState, newState) => {
   const userId = newState.member?.id || oldState.member?.id;
   if (!userId) return;
@@ -341,7 +339,7 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 setInterval(() => {
   const now = Date.now();
   voiceTimers.forEach((joinedTime, userId) => {
-    if (now - joinedTime >= 60000) { // كل دقيقة
+    if (now - joinedTime >= 60000) { 
       voiceTimers.set(userId, now);
       if (!userLevels.has(userId)) {
         userLevels.set(userId, { chatXp: 0, chatLevel: 0, voiceXp: 0, voiceLevel: 0 });
@@ -382,7 +380,6 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  // نظام الشات XP (كل رسالة تزيد 2 XP)
   if (!userLevels.has(userId)) {
     userLevels.set(userId, { chatXp: 0, chatLevel: 0, voiceXp: 0, voiceLevel: 0 });
   }
@@ -394,7 +391,6 @@ client.on('messageCreate', async message => {
     uData.chatLevel += 1;
   }
 
-  // أمر ID والرسم عبر Canvas
   const contentLower = message.content.toLowerCase().trim();
 
   if (contentLower === 'id' || contentLower === 'آي دي' || contentLower === 'اي دي') {
@@ -402,13 +398,11 @@ client.on('messageCreate', async message => {
       const targetM = await getTargetMember(message) || message.member;
       const targetData = userLevels.get(targetM.id) || { chatXp: 0, chatLevel: 0, voiceXp: 0, voiceLevel: 0 };
 
-      // حساب الرانك التلقائي حسب عدد المتكلمين الحقيقيين في السيرفر
       let totalChatSpeakers = 0;
       let totalVoiceSpeakers = 0;
       let userChatRank = 1;
       let userVoiceRank = 1;
 
-      // ترتيب الحسابات
       const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 300 + b[1].chatXp) - (a[1].chatLevel * 300 + a[1].chatXp));
       const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + a[1].voiceXp));
 
@@ -423,11 +417,9 @@ client.on('messageCreate', async message => {
       if (foundVoiceIdx !== -1) userVoiceRank = foundVoiceIdx + 1;
       else userVoiceRank = totalVoiceSpeakers > 0 ? totalVoiceSpeakers + 1 : 1;
 
-      // رسم الصورة مطابقة تماماً للصورة المعروضة
       const canvas = createCanvas(1200, 480);
       const ctx = canvas.getContext('2d');
 
-      // الخلفية الأساسية (صورة خلفية افتراضية أو لون)
       ctx.fillStyle = '#1e2229';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -438,19 +430,17 @@ client.on('messageCreate', async message => {
         }
       } catch (e) {}
 
-      // الصندوق الشفاف الرئيسي للدردشة والصوت
       ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
       ctx.beginPath();
       ctx.roundRect(40, 40, 780, 400, 20);
       ctx.fill();
 
-      // النصوص والعناوين
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 36px sans-serif';
       ctx.fillText('Chat Level', 140, 115);
       ctx.fillText('Voice Level', 140, 310);
 
-      // أيقونات الدردشة والصوت الدائرية اليسرى
+      // رسم الأيقونات الخاصة بالدردشة والصوت بدلاً من الدوائر الفارغة
       ctx.fillStyle = '#2b2d31';
       ctx.beginPath();
       ctx.arc(80, 105, 35, 0, Math.PI * 2);
@@ -459,7 +449,34 @@ client.on('messageCreate', async message => {
       ctx.arc(80, 300, 35, 0, Math.PI * 2);
       ctx.fill();
 
-      // شريط التقدم للدردشة
+      // رسم أيقونة المحادثة للـ Chat
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(62, 93, 26, 18, 5);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(68, 111);
+      ctx.lineTo(76, 118);
+      ctx.lineTo(76, 111);
+      ctx.closePath();
+      ctx.fill();
+
+      // رسم أيقونة السماعة للصوت للـ Voice
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(63, 292, 6, 16);
+      ctx.beginPath();
+      ctx.moveTo(69, 292);
+      ctx.lineTo(80, 282);
+      ctx.lineTo(80, 318);
+      ctx.lineTo(69, 308);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(83, 300, 10, -Math.PI / 2, Math.PI / 2);
+      ctx.stroke();
+
       ctx.fillStyle = '#3f4248';
       ctx.beginPath();
       ctx.roundRect(140, 150, 460, 50, 25);
@@ -477,7 +494,6 @@ client.on('messageCreate', async message => {
       ctx.textAlign = 'center';
       ctx.fillText(`${targetData.chatXp} / ${chatMaxXp} XP`, 370, 183);
 
-      // شريط التقدم للصوت
       ctx.fillStyle = '#3f4248';
       ctx.beginPath();
       ctx.roundRect(140, 345, 460, 50, 25);
@@ -493,7 +509,6 @@ client.on('messageCreate', async message => {
       ctx.fillStyle = '#111214';
       ctx.fillText(`${targetData.voiceXp} / ${voiceMaxXp} XP`, 370, 378);
 
-      // بيلز الليفل والرانك للتشات
       ctx.textAlign = 'left';
       ctx.fillStyle = '#2b2d31';
       ctx.beginPath();
@@ -506,7 +521,6 @@ client.on('messageCreate', async message => {
       ctx.fillText(`Level ${targetData.chatLevel}`, 485, 112);
       ctx.fillText(`Rank #${userChatRank}`, 620, 112);
 
-      // بيلز الليفل والرانك للصوت
       ctx.fillStyle = '#2b2d31';
       ctx.beginPath();
       ctx.roundRect(470, 280, 120, 40, 20);
@@ -517,13 +531,11 @@ client.on('messageCreate', async message => {
       ctx.fillText(`Level ${targetData.voiceLevel}`, 485, 307);
       ctx.fillText(`Rank #${userVoiceRank}`, 620, 307);
 
-      // الصندوق الجانبي الأيمن الخاص بصورة المستخدم واسمه
       ctx.fillStyle = '#2b2d31';
       ctx.beginPath();
       ctx.roundRect(850, 40, 310, 400, 25);
       ctx.fill();
 
-      // صورة العضو الدائرية
       const avatarUrl = targetM.user.displayAvatarURL({ extension: 'png', size: 256 });
       try {
         const avatarImage = await loadImage(avatarUrl);
@@ -536,7 +548,6 @@ client.on('messageCreate', async message => {
         ctx.restore();
       } catch (e) {}
 
-      // اسم المستخدم والـ Discriminator أو الـ ID
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 30px sans-serif';
       ctx.textAlign = 'center';
@@ -555,31 +566,22 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  // أمر سحب (يتم سحب العضو للروم الصوتي الخاص بك، بشرط امتلاك الرول المخصص)
+  // أمر سحب المحدث حسب شروط الروم الصوتي
   if (contentLower.startsWith('سحب')) {
     if (!message.member.roles.cache.has(PULL_ROLE_ID) && !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      await message.reply({ content: 'عذراً، لا تمتلك الرول المخصص لاستخدام أمر سحب!', ephemeral: true }).catch(() => {});
       await message.react('❌').catch(() => {});
       return;
     }
 
     try {
       const targetMember = await getTargetMember(message);
-      if (!targetMember) {
-        await message.reply({ content: 'الرجاء منشن الشخص المراد سحبه أو الرد على رسالته!', ephemeral: true }).catch(() => {});
-        await message.react('❌').catch(() => {});
-        return;
-      }
-
       const authorVoiceChannel = message.member.voice.channel;
-      if (!authorVoiceChannel) {
-        await message.reply({ content: 'يجب أن تكون في روم صوتي لكي تستطيع سحب الشخص إليك!', ephemeral: true }).catch(() => {});
-        await message.react('❌').catch(() => {});
-        return;
-      }
 
-      if (!targetMember.voice.channel) {
-        await message.reply({ content: 'الشخص المستهدف ليس في أي روم صوتي حالياً!', ephemeral: true }).catch(() => {});
+      // الشروط:
+      // 1. إذا المنفذ (أنا) لست في روم صوتي -> رياكشن خطأ فقط ولا يرد البوت
+      // 2. إذا الشخص المستهدف ليس في روم صوتي -> رياكشن خطأ فقط ولا يرد البوت
+      // 3. إذا لم أكن أنا في روم صوتي وهو في روم صوتي (أو العكس) -> رياكشن خطأ
+      if (!authorVoiceChannel || !targetMember || !targetMember.voice.channel || targetMember.voice.channel.id !== authorVoiceChannel.id) {
         await message.react('❌').catch(() => {});
         return;
       }
