@@ -91,6 +91,15 @@ const ADDED_ROLE_CHANNEL_ID = '1535822130342658118';
 
 const BLOCKED_BOT_CHANNEL_ID = '1535856331666358413';
 
+// دوال حساب الـ XP لكل لفل بناءً على القاعدة المطلوبة (يبدأ بـ 100 وكل لفل يزيد 50)
+function getChatXpRequired(level) {
+  return 100 + (level * 50);
+}
+
+function getVoiceXpRequired(level) {
+  return 100 + (level * 50);
+}
+
 function hasNoRolePermission(member) {
   if (!member) return false;
   if (member.permissions.has(PermissionsBitField.Flags.Administrator)) return true;
@@ -336,6 +345,7 @@ client.on('voiceStateUpdate', (oldState, newState) => {
   }
 });
 
+// نظام الفويس: كل دقيقة يعطي 10 XP
 setInterval(() => {
   const now = Date.now();
   voiceTimers.forEach((joinedTime, userId) => {
@@ -346,10 +356,13 @@ setInterval(() => {
       }
       const data = userLevels.get(userId);
       data.voiceXp += 10;
-      let nextVoiceXpNeeded = (data.voiceLevel + 1) * 100;
-      if (data.voiceXp >= nextVoiceXpNeeded) {
+      
+      let nextVoiceXpNeeded = getVoiceXpRequired(data.voiceLevel);
+      while (data.voiceXp >= nextVoiceXpNeeded) {
         data.voiceXp -= nextVoiceXpNeeded;
         data.voiceLevel += 1;
+        if (data.voiceLevel >= 1000) break;
+        nextVoiceXpNeeded = getVoiceXpRequired(data.voiceLevel);
       }
     }
   });
@@ -384,11 +397,15 @@ client.on('messageCreate', async message => {
     userLevels.set(userId, { chatXp: 0, chatLevel: 0, voiceXp: 0, voiceLevel: 0 });
   }
   const uData = userLevels.get(userId);
-  uData.chatXp += 2;
-  let nextChatXpNeeded = (uData.chatLevel + 1) * 300;
-  if (uData.chatXp >= nextChatXpNeeded) {
+  
+  // نظام الشات: كل رسالة تعطي 5 XP
+  uData.chatXp += 5;
+  let nextChatXpNeeded = getChatXpRequired(uData.chatLevel);
+  while (uData.chatXp >= nextChatXpNeeded) {
     uData.chatXp -= nextChatXpNeeded;
     uData.chatLevel += 1;
+    if (uData.chatLevel >= 1000) break;
+    nextChatXpNeeded = getChatXpRequired(uData.chatLevel);
   }
 
   const contentLower = message.content.toLowerCase().trim();
@@ -403,7 +420,7 @@ client.on('messageCreate', async message => {
       let userChatRank = 1;
       let userVoiceRank = 1;
 
-      const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 300 + b[1].chatXp) - (a[1].chatLevel * 300 + a[1].chatXp));
+      const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 100 + b[1].chatXp) - (a[1].chatLevel * 100 + a[1].chatXp));
       const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + a[1].voiceXp));
 
       totalChatSpeakers = Math.max(sortedByChat.length, targetData.chatLevel > 0 || targetData.chatXp > 0 ? 1 : 0);
@@ -420,7 +437,6 @@ client.on('messageCreate', async message => {
       const canvas = createCanvas(1200, 480);
       const ctx = canvas.getContext('2d');
 
-      // رسم الخلفية لتملأ البطاقة بالكامل (كما في الصورة المرجعية الثانية)
       try {
         const bgImage = await loadImage('https://cdn.discordapp.com/attachments/1535193306701504532/1535537278636658710/photo-output.png?ex=6a782008&is=6a76ce88&hm=db78e86a90466f1f944c293002cc0afbc5428647bcb23121cd0549509c32f72e&').catch(() => null);
         if (bgImage) {
@@ -444,7 +460,6 @@ client.on('messageCreate', async message => {
       ctx.fillText('Chat Level', 140, 115);
       ctx.fillText('Voice Level', 140, 310);
 
-      // رسم الأيقونات الخاصة بالدردشة والصوت
       ctx.fillStyle = '#2b2d31';
       ctx.beginPath();
       ctx.arc(80, 105, 35, 0, Math.PI * 2);
@@ -453,7 +468,6 @@ client.on('messageCreate', async message => {
       ctx.arc(80, 300, 35, 0, Math.PI * 2);
       ctx.fill();
 
-      // رسم أيقونة المحادثة للـ Chat
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.roundRect(62, 93, 26, 18, 5);
@@ -465,7 +479,6 @@ client.on('messageCreate', async message => {
       ctx.closePath();
       ctx.fill();
 
-      // رسم أيقونة السماعة للصوت للـ Voice
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(63, 292, 6, 16);
       ctx.beginPath();
@@ -486,7 +499,7 @@ client.on('messageCreate', async message => {
       ctx.roundRect(140, 150, 460, 50, 25);
       ctx.fill();
       
-      let chatMaxXp = (targetData.chatLevel + 1) * 300;
+      let chatMaxXp = getChatXpRequired(targetData.chatLevel);
       let chatBarWidth = Math.min(460, Math.max(20, (targetData.chatXp / chatMaxXp) * 460));
       ctx.fillStyle = '#e0e0e0';
       ctx.beginPath();
@@ -503,7 +516,7 @@ client.on('messageCreate', async message => {
       ctx.roundRect(140, 345, 460, 50, 25);
       ctx.fill();
 
-      let voiceMaxXp = (targetData.voiceLevel + 1) * 100;
+      let voiceMaxXp = getVoiceXpRequired(targetData.voiceLevel);
       let voiceBarWidth = Math.min(460, Math.max(20, (targetData.voiceXp / voiceMaxXp) * 460));
       ctx.fillStyle = '#e0e0e0';
       ctx.beginPath();
@@ -556,10 +569,7 @@ client.on('messageCreate', async message => {
       ctx.font = 'bold 30px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(targetM.user.username, 1005, 300);
-
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillStyle = '#949ba4';
-      ctx.fillText(`#${targetM.user.discriminator || '0'}`, 1005, 335);
+      // تم إزالة الهاشتاج نهائياً بناءً على طلبك
 
       const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'id-card.png' });
       await message.reply({ files: [attachment] });
@@ -570,7 +580,6 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  // أمر سحب العضو بناءً على شروط الروم الصوتي
   if (contentLower.startsWith('سحب')) {
     if (!message.member.roles.cache.has(PULL_ROLE_ID) && !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
       await message.react('❌').catch(() => {});
