@@ -420,15 +420,19 @@ client.on('messageCreate', async message => {
       const canvas = createCanvas(1200, 480);
       const ctx = canvas.getContext('2d');
 
-      ctx.fillStyle = '#1e2229';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+      // رسم الخلفية لتملأ البطاقة بالكامل (كما في الصورة المرجعية الثانية)
       try {
-        const bgImage = await loadImage('https://cdn.discordapp.com/attachments/1535193306701504532/1535533823956221952/image.png').catch(() => null);
+        const bgImage = await loadImage('https://cdn.discordapp.com/attachments/1535193306701504532/1535537278636658710/photo-output.png?ex=6a782008&is=6a76ce88&hm=db78e86a90466f1f944c293002cc0afbc5428647bcb23121cd0549509c32f72e&').catch(() => null);
         if (bgImage) {
           ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.fillStyle = '#1e2229';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-      } catch (e) {}
+      } catch (e) {
+        ctx.fillStyle = '#1e2229';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
       ctx.beginPath();
@@ -440,7 +444,7 @@ client.on('messageCreate', async message => {
       ctx.fillText('Chat Level', 140, 115);
       ctx.fillText('Voice Level', 140, 310);
 
-      // رسم الأيقونات الخاصة بالدردشة والصوت بدلاً من الدوائر الفارغة
+      // رسم الأيقونات الخاصة بالدردشة والصوت
       ctx.fillStyle = '#2b2d31';
       ctx.beginPath();
       ctx.arc(80, 105, 35, 0, Math.PI * 2);
@@ -566,7 +570,7 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  // أمر سحب المحدث حسب شروط الروم الصوتي
+  // أمر سحب العضو بناءً على شروط الروم الصوتي
   if (contentLower.startsWith('سحب')) {
     if (!message.member.roles.cache.has(PULL_ROLE_ID) && !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
       await message.react('❌').catch(() => {});
@@ -577,10 +581,6 @@ client.on('messageCreate', async message => {
       const targetMember = await getTargetMember(message);
       const authorVoiceChannel = message.member.voice.channel;
 
-      // الشروط:
-      // 1. إذا المنفذ (أنا) لست في روم صوتي -> رياكشن خطأ فقط ولا يرد البوت
-      // 2. إذا الشخص المستهدف ليس في روم صوتي -> رياكشن خطأ فقط ولا يرد البوت
-      // 3. إذا لم أكن أنا في روم صوتي وهو في روم صوتي (أو العكس) -> رياكشن خطأ
       if (!authorVoiceChannel || !targetMember || !targetMember.voice.channel || targetMember.voice.channel.id !== authorVoiceChannel.id) {
         await message.react('❌').catch(() => {});
         return;
