@@ -1548,5 +1548,10 @@ client.on('interactionCreate', async interaction => {
     } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
   }
 });
+const http = require('http');
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('I am alive');
+}).listen(3000);
 
 client.login(process.env.TOKEN);
