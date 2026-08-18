@@ -1553,5 +1553,4 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('I am alive');
 }).listen(3000);
-
 client.login(process.env.TOKEN);
