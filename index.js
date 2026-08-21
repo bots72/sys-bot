@@ -80,6 +80,7 @@ const AUTO_JOIN_ROLE_ID = '1535724553563668561';
 const PULL_ROLE_ID = '1536989468492435496'; 
 
 const COLOR_CHANNEL_ID = '1535406298781192292'; 
+const NEW_COLOR_CHANNEL_ID = '1540356292575625356'; // روم الألوان الجديد المطلوب
 const PIC_LIVE_CHANNEL_ID = '1535490093358252074'; 
 const IMAGE_ONLY_CHANNEL_ID = '1535490327610400810'; 
 const TELLONYM_CHANNEL_ID = '1535490429724921986'; 
@@ -89,9 +90,6 @@ const NEW_IMAGE_CHANNEL_ID = '1535489711420735549';
 const REMOVE_ROLE_CHANNEL_ID = '1535821718751289354';
 const ADDED_ROLE_CHANNEL_ID = '1535822130342658118';
 
-const BLOCKED_BOT_CHANNEL_ID = '1535856331666358413';
-
-// دوال حساب الـ XP لكل لفل بناءً على القاعدة المطلوبة (يبدأ بـ 100 وكل لفل يزيد 50)
 function getChatXpRequired(level) {
   return 100 + (level * 50);
 }
@@ -183,6 +181,7 @@ client.once('ready', async () => {
     }
   }
 
+  // روم الألوان القديم (تحديث كل 15 ثانية)
   const colorChannel = await client.channels.fetch(COLOR_CHANNEL_ID).catch(() => null);
   if (colorChannel) {
     setInterval(async () => {
@@ -214,6 +213,46 @@ client.once('ready', async () => {
           new ButtonBuilder().setCustomId('role_1010').setLabel('1010').setStyle(ButtonStyle.Secondary)
         );
         await colorChannel.send({ embeds: [colorEmbed], components: [row1, row2, row3] });
+      } catch (err) {}
+    }, 15000);
+  }
+
+  // روم الألوان الجديد المطلوب (1540356292575625356) بحيث تنحذف كل الرسائل كل 15 ثانية وتتحدث بسرعة فائقة
+  const newColorChannel = await client.channels.fetch(NEW_COLOR_CHANNEL_ID).catch(() => null);
+  if (newColorChannel) {
+    setInterval(async () => {
+      try {
+        const fetchedMessages = await newColorChannel.messages.fetch({ limit: 100 });
+        if (fetchedMessages.size > 0) {
+          await newColorChannel.bulkDelete(fetchedMessages, true).catch(async () => {
+            for (const msg of fetchedMessages.values()) {
+              await msg.delete().catch(() => {});
+            }
+          });
+        }
+        const colorImageUrl = 'https://cdn.discordapp.com/attachments/1535193306701504532/1535489425520459828/05994202-493A-4B2D-9FD9-F2D39872FC84.png';
+        const colorEmbed = new EmbedBuilder().setImage(colorImageUrl).setColor('#2b2d31');
+
+        const row1 = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('role_0').setLabel('0').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_1').setLabel('1').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_2').setLabel('2').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_3').setLabel('3').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_4').setLabel('4').setStyle(ButtonStyle.Secondary)
+        );
+        const row2 = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('role_5').setLabel('5').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_6').setLabel('6').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_7').setLabel('7').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_8').setLabel('8').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_9').setLabel('9').setStyle(ButtonStyle.Secondary)
+        );
+        const row3 = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('role_10').setLabel('10').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_11').setLabel('11').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('role_1010').setLabel('1010').setStyle(ButtonStyle.Secondary)
+        );
+        await newColorChannel.send({ embeds: [colorEmbed], components: [row1, row2, row3] });
       } catch (err) {}
     }, 15000);
   }
@@ -345,7 +384,6 @@ client.on('voiceStateUpdate', (oldState, newState) => {
   }
 });
 
-// نظام الفويس: كل دقيقة يعطي 10 XP
 setInterval(() => {
   const now = Date.now();
   voiceTimers.forEach((joinedTime, userId) => {
@@ -398,7 +436,6 @@ client.on('messageCreate', async message => {
   }
   const uData = userLevels.get(userId);
   
-  // نظام الشات: كل رسالة تعطي 5 XP
   uData.chatXp += 5;
   let nextChatXpNeeded = getChatXpRequired(uData.chatLevel);
   while (uData.chatXp >= nextChatXpNeeded) {
@@ -409,6 +446,59 @@ client.on('messageCreate', async message => {
   }
 
   const contentLower = message.content.toLowerCase().trim();
+
+  // فك الكل (No Role)
+  if (contentLower === 'فك الكل') {
+    if (!hasRoleOrHigher(message.member, PROTECTED_ROLE_ID)) {
+      await message.react('❌').catch(() => {});
+      return;
+    }
+    try {
+      await message.guild.members.fetch();
+      const membersWithNoRole = message.guild.members.cache.filter(m => m.roles.cache.has(NO_ROLE_ID));
+      const countNoRole = membersWithNoRole.size;
+
+      const embed = new EmbedBuilder()
+        .setDescription(`Are you sure of the no roll from everyone\n(${countNoRole})`)
+        .setColor('#2b2d31');
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`unmun_norole_${message.author.id}`).setLabel('yes').setStyle(ButtonStyle.Danger)
+      );
+
+      await message.reply({ embeds: [embed], components: [row] });
+      await message.react('✅').catch(() => {});
+    } catch (e) {
+      await message.react('❌').catch(() => {});
+    }
+    return;
+  }
+
+  // فك الباند
+  if (contentLower === 'فك الباند') {
+    if (!hasRoleOrHigher(message.member, PROTECTED_ROLE_ID)) {
+      await message.react('❌').catch(() => {});
+      return;
+    }
+    try {
+      const bans = await message.guild.bans.fetch();
+      const countBans = bans.size;
+
+      const embed = new EmbedBuilder()
+        .setDescription(`Are you sure to untie the band from all members\n(${countBans})`)
+        .setColor('#2b2d31');
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`unmun_ban_${message.author.id}`).setLabel('yes').setStyle(ButtonStyle.Danger)
+      );
+
+      await message.reply({ embeds: [embed], components: [row] });
+      await message.react('✅').catch(() => {});
+    } catch (e) {
+      await message.react('❌').catch(() => {});
+    }
+    return;
+  }
 
   if (contentLower === 'id' || contentLower === 'آي دي' || contentLower === 'اي دي') {
     try {
@@ -569,7 +659,6 @@ client.on('messageCreate', async message => {
       ctx.font = 'bold 30px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(targetM.user.username, 1005, 300);
-      // تم إزالة الهاشتاج نهائياً بناءً على طلبك
 
       const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'id-card.png' });
       await message.reply({ files: [attachment] });
@@ -1133,12 +1222,12 @@ client.on('messageCreate', async message => {
     }
     try {
       const count = parseInt(args[1]);
-      if (isNaN(count) || count <= 0) {
+      if (isNaN(count) || count <= 0 || count > 50) { // أعلى حد للمسح 50
         await message.react('❌').catch(() => {});
         return;
       }
       await message.delete().catch(() => {});
-      const fetched = await message.channel.messages.fetch({ limit: Math.min(count, 100) });
+      const fetched = await message.channel.messages.fetch({ limit: Math.min(count, 50) });
       await message.channel.bulkDelete(fetched, true);
     } catch (err) {
       await message.react('❌').catch(() => {});
@@ -1214,6 +1303,44 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isButton()) {
     const member = interaction.member;
     const customId = interaction.customId;
+
+    // أزرار فك الكل وفك الباند (عفو ملكي)
+    if (customId.startsWith('unmun_')) {
+      if (!hasRoleOrHigher(member, PROTECTED_ROLE_ID)) {
+        await interaction.reply({ content: 'ليس لديك صلاحية لتنفيذ هذا الإجراء!', ephemeral: true }).catch(() => {});
+        return;
+      }
+
+      const parts = customId.split('_');
+      const actionType = parts[1];
+
+      if (actionType === 'norole') {
+        try {
+          await interaction.guild.members.fetch();
+          const membersWithNoRole = interaction.guild.members.cache.filter(m => m.roles.cache.has(NO_ROLE_ID));
+          for (const m of membersWithNoRole.values()) {
+            await m.roles.remove(NO_ROLE_ID).catch(() => {});
+          }
+          await interaction.update({ content: 'The no roll has been unlocked from everyone\nعفو ملكي', embeds: [], components: [] });
+        } catch (e) {
+          await interaction.reply({ content: 'حدث خطأ أثناء فك النو رول عن الجميع!', ephemeral: true });
+        }
+        return;
+      }
+
+      if (actionType === 'ban') {
+        try {
+          const bans = await interaction.guild.bans.fetch();
+          for (const banInfo of bans.values()) {
+            await interaction.guild.members.unban(banInfo.user.id).catch(() => {});
+          }
+          await interaction.update({ content: 'I took the band away from everyone\nعفو ملكي', embeds: [], components: [] });
+        } catch (e) {
+          await interaction.reply({ content: 'حدث خطأ أثناء فك الباند عن الجميع!', ephemeral: true });
+        }
+        return;
+      }
+    }
 
     const isColorButton = customId.startsWith('role_') && (customId.replace('role_', '') === '1010' || !isNaN(customId.replace('role_', '')));
     const isPicLiveButton = picLiveRoles[customId] !== undefined;
@@ -1490,7 +1617,7 @@ client.on('interactionCreate', async interaction => {
                 });
                 break;
               } else {
-                let toDelete = arrayMsgs.slice(0, requestedCount);
+                let toDelete = arrayNames = arrayMsgs.slice(0, requestedCount);
                 for (const m of toDelete) {
                   await m.delete().catch(() => {});
                 }
@@ -1548,9 +1675,11 @@ client.on('interactionCreate', async interaction => {
     } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
   }
 });
+
 const http = require('http');
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('I am alive');
 }).listen(3000);
+
 client.login(process.env.TOKEN);
