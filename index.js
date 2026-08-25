@@ -54,6 +54,23 @@ const roleIds = [
   "1535432094635921510"  // 1010
 ];
 
+// دمج خريطة الألوان المضافة من الكود الثاني لضمان التوافق التام
+const rolesMap = {
+    'role_0': '1535430257316864152',
+    'role_1': '1535430309326233772',
+    'role_2': '1535430574737592390',
+    'role_3': '1535430705880764487',
+    'role_4': '1535430858633388092',
+    'role_5': '1535431081640206346',
+    'role_6': '1535431352881651872',
+    'role_7': '1535431435001925723',
+    'role_8': '1535431536122265640',
+    'role_9': '1535431730394177616',
+    'role_10': '1535431845464903761',
+    'role_11': '1535431957251367002',
+    'role_1010': '1535432094635921510'
+};
+
 const picLiveRoles = {
   'role_pic': '1535409758197260459',
   'role_live': '1535409840430645308'
@@ -80,7 +97,7 @@ const AUTO_JOIN_ROLE_ID = '1535724553563668561';
 const PULL_ROLE_ID = '1536989468492435496'; 
 
 const COLOR_CHANNEL_ID = '1535406298781192292'; 
-const NEW_COLOR_CHANNEL_ID = '1540356292575625356'; // روم الألوان الجديد المطلوب
+const NEW_COLOR_CHANNEL_ID = '1540356292575625356'; 
 const PIC_LIVE_CHANNEL_ID = '1535490093358252074'; 
 const IMAGE_ONLY_CHANNEL_ID = '1535490327610400810'; 
 const TELLONYM_CHANNEL_ID = '1535490429724921986'; 
@@ -89,6 +106,7 @@ const NEW_IMAGE_CHANNEL_ID = '1535489711420735549';
 
 const REMOVE_ROLE_CHANNEL_ID = '1535821718751289354';
 const ADDED_ROLE_CHANNEL_ID = '1535822130342658118';
+const BLOCKED_BOT_CHANNEL_ID = '1535822130342658119'; // تم تعريف المتغير لمنع الأخطاء البرمجية
 
 function getChatXpRequired(level) {
   return 100 + (level * 50);
@@ -217,7 +235,7 @@ client.once('ready', async () => {
     }, 15000);
   }
 
-  // روم الألوان الجديد المطلوب (1540356292575625356) بحيث تنحذف كل الرسائل كل 15 ثانية وتتحدث بسرعة فائقة
+  // روم الألوان الجديد
   const newColorChannel = await client.channels.fetch(NEW_COLOR_CHANNEL_ID).catch(() => null);
   if (newColorChannel) {
     setInterval(async () => {
@@ -447,6 +465,42 @@ client.on('messageCreate', async message => {
 
   const contentLower = message.content.toLowerCase().trim();
 
+  // دعم أمر !help المضاف من الكود الثاني لعرض لوحة الألوان والرواتب
+  if (contentLower === '!help') {
+    const embed = new EmbedBuilder()
+        .setTitle('رول الصور واللايف والألوان')
+        .setImage('https://cdn.discordapp.com/attachments/1535331262343024640/1535434690872348702/B0D8C494-4238-4411-9D59-979A17AEBD16.png?ex=6a77c07d&is=6a766efd&hm=299382d949328dbe15213021bca24f1dbe341881fcf753758a6223f7052339a6&')
+        .setColor('#2f3136');
+
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('role_0').setLabel('0').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_1').setLabel('1').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_2').setLabel('2').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_3').setLabel('3').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_4').setLabel('4').setStyle(ButtonStyle.Secondary),
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('role_5').setLabel('5').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_6').setLabel('6').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_7').setLabel('7').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_8').setLabel('8').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_9').setLabel('9').setStyle(ButtonStyle.Secondary),
+    );
+
+    const row3 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('role_10').setLabel('10').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_11').setLabel('11').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('role_1010').setLabel('1010').setStyle(ButtonStyle.Secondary),
+    );
+
+    await message.channel.send({
+        embeds: [embed],
+        components: [row1, row2, row3]
+    });
+    return;
+  }
+
   // فك الكل (No Role)
   if (contentLower === 'فك الكل') {
     if (!hasRoleOrHigher(message.member, PROTECTED_ROLE_ID)) {
@@ -511,7 +565,7 @@ client.on('messageCreate', async message => {
       let userVoiceRank = 1;
 
       const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 100 + b[1].chatXp) - (a[1].chatLevel * 100 + a[1].chatXp));
-      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + a[1].voiceXp));
+      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + b[1].voiceXp));
 
       totalChatSpeakers = Math.max(sortedByChat.length, targetData.chatLevel > 0 || targetData.chatXp > 0 ? 1 : 0);
       totalVoiceSpeakers = Math.max(sortedByVoice.length, targetData.voiceLevel > 0 || targetData.voiceXp > 0 ? 1 : 0);
@@ -1222,7 +1276,7 @@ client.on('messageCreate', async message => {
     }
     try {
       const count = parseInt(args[1]);
-      if (isNaN(count) || count <= 0 || count > 50) { // أعلى حد للمسح 50
+      if (isNaN(count) || count <= 0 || count > 50) { 
         await message.react('❌').catch(() => {});
         return;
       }
@@ -1293,6 +1347,8 @@ client.on('messageCreate', async message => {
 });
 
 client.on('interactionCreate', async interaction => {
+  if (!interaction.isButton()) return;
+
   if (interaction.channel && interaction.channel.id === BLOCKED_BOT_CHANNEL_ID) {
     if (interaction.isRepliable()) {
       await interaction.reply({ content: 'عقلياً، هذا الروم ممنوع على البوت التفاعل فيه!', ephemeral: true }).catch(() => {});
@@ -1300,240 +1356,200 @@ client.on('interactionCreate', async interaction => {
     return;
   }
 
-  if (interaction.isButton()) {
-    const member = interaction.member;
-    const customId = interaction.customId;
+  const member = interaction.member;
+  const customId = interaction.customId;
 
-    // أزرار فك الكل وفك الباند (عفو ملكي)
-    if (customId.startsWith('unmun_')) {
-      if (!hasRoleOrHigher(member, PROTECTED_ROLE_ID)) {
-        await interaction.reply({ content: 'ليس لديك صلاحية لتنفيذ هذا الإجراء!', ephemeral: true }).catch(() => {});
-        return;
-      }
-
-      const parts = customId.split('_');
-      const actionType = parts[1];
-
-      if (actionType === 'norole') {
-        try {
-          await interaction.guild.members.fetch();
-          const membersWithNoRole = interaction.guild.members.cache.filter(m => m.roles.cache.has(NO_ROLE_ID));
-          for (const m of membersWithNoRole.values()) {
-            await m.roles.remove(NO_ROLE_ID).catch(() => {});
-          }
-          await interaction.update({ content: 'The no roll has been unlocked from everyone\nعفو ملكي', embeds: [], components: [] });
-        } catch (e) {
-          await interaction.reply({ content: 'حدث خطأ أثناء فك النو رول عن الجميع!', ephemeral: true });
-        }
-        return;
-      }
-
-      if (actionType === 'ban') {
-        try {
-          const bans = await interaction.guild.bans.fetch();
-          for (const banInfo of bans.values()) {
-            await interaction.guild.members.unban(banInfo.user.id).catch(() => {});
-          }
-          await interaction.update({ content: 'I took the band away from everyone\nعفو ملكي', embeds: [], components: [] });
-        } catch (e) {
-          await interaction.reply({ content: 'حدث خطأ أثناء فك الباند عن الجميع!', ephemeral: true });
-        }
-        return;
-      }
+  // أزرار فك الكل وفك الباند (عفو ملكي)
+  if (customId.startsWith('unmun_')) {
+    if (!hasRoleOrHigher(member, PROTECTED_ROLE_ID)) {
+      await interaction.reply({ content: 'ليس لديك صلاحية لتنفيذ هذا الإجراء!', ephemeral: true }).catch(() => {});
+      return;
     }
 
-    const isColorButton = customId.startsWith('role_') && (customId.replace('role_', '') === '1010' || !isNaN(customId.replace('role_', '')));
-    const isPicLiveButton = picLiveRoles[customId] !== undefined;
+    const parts = customId.split('_');
+    const actionType = parts[1];
 
-    if (member && member.roles.cache.has(NO_ROLE_ID)) {
-      if (!isColorButton && !isPicLiveButton) {
-        await interaction.reply({ content: 'لا يمكنك استخدام الأزرار وأنت بوضع النو رول!', ephemeral: true }).catch(() => {});
-        return;
-      }
-    }
-
-    if (customId.startsWith('perm_')) {
-      const permissionKey = customId.replace('perm_', '');
+    if (actionType === 'norole') {
       try {
-        const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => interaction.guild);
-        await targetGuild.roles.fetch(); 
-        
-        const rawRoleIds = [
-          "1535723352788836373", "1535720065947668500", "1535723556426481757", "1535720365127376897",
-          "1535714293784248372", "1535714856009732179", "1535716348947079322", "1535715700654604429",
-          "1535522564061929512", "1535724113690099843", "1535716161197576212", "1535718418664136845",
-          "1535718767777030237", "1535714783259787366", "1535718216037568623", "1535720112542187560",
-          "1535724553563668561", "1535713852447133786", "1535714387942445246", "1535723441540567050",
-          "1535720208671440988", "1535716064921653299", "1535724156791029801", "1535723664874676286",
-          "1535722204627599391", "1535718917807538226", "1535722539706220604", "1535719311992164442",
-          "1535720258655227966", "1535723508389257397", "1535714487565291520", "1535719233655275731",
-          "1535715153885007912", "1535718823301480628", "1535722303550132284", "1535723262204452966",
-          "1535719977351389304", "1535713953165090847", "1535722345975775323", "1535724212222959777",
-          "1535718964683087963", "1535720023384002630", "1535723308539187352", "1535715359477203014",
-          "1535716253451288647", "1535715789187842258", "1535718336585924608", "1535723397231943832",
-          "1535720158092460052", "1535722385175748669", "1535722454218178580", "1535719144052232212",
-          "1535719187861864569", "1535722498933530674", "1535719622400020722", "1535719270250713161",
-          "1535722615925248151", "1535722725706825889", "1535719507727880273", "1535722243542360105",
-          "1535714949085794456", "1535723709929623675", "1535722173283573760", "1535723604078239784",
-          "1535715241739026433", "1535718512683913276", "1535722770414051328", "1535719580167831583"
-        ];
-        
-        const uniqueRoleIds = [...new Set(rawRoleIds)];
+        await interaction.guild.members.fetch();
+        const membersWithNoRole = interaction.guild.members.cache.filter(m => m.roles.cache.has(NO_ROLE_ID));
+        for (const m of membersWithNoRole.values()) {
+          await m.roles.remove(NO_ROLE_ID).catch(() => {});
+        }
+        await interaction.update({ content: 'The no roll has been unlocked from everyone\nعفو ملكي', embeds: [], components: [] });
+      } catch (e) {
+        await interaction.reply({ content: 'حدث خطأ أثناء فك النو رول عن الجميع!', ephemeral: true });
+      }
+      return;
+    }
 
-        const roles = uniqueRoleIds.map(id => targetGuild.roles.cache.get(id)).filter(r => r !== undefined);
-        
-        let components = [];
-        let currentRow = new ActionRowBuilder();
-        
-        roles.forEach((role) => {
-          if (currentRow.components.length >= 5) {
-            components.push(currentRow);
-            currentRow = new ActionRowBuilder();
-          }
-          currentRow.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`setperm_${permissionKey}_${role.id}`)
-              .setLabel(role.name.substring(0, 80))
-              .setStyle(ButtonStyle.Secondary)
-          );
-        });
-        if (currentRow.components.length > 0) {
+    if (actionType === 'ban') {
+      try {
+        const bans = await interaction.guild.bans.fetch();
+        for (const banInfo of bans.values()) {
+          await interaction.guild.members.unban(banInfo.user.id).catch(() => {});
+        }
+        await interaction.update({ content: 'I took the band away from everyone\nعفو ملكي', embeds: [], components: [] });
+      } catch (e) {
+        await interaction.reply({ content: 'حدث خطأ أثناء فك الباند عن الجميع!', ephemeral: true });
+      }
+      return;
+    }
+  }
+
+  const isColorButton = (customId.startsWith('role_') && (customId.replace('role_', '') === '1010' || !isNaN(customId.replace('role_', '')))) || rolesMap[customId];
+  const isPicLiveButton = picLiveRoles[customId] !== undefined;
+
+  if (member && member.roles.cache.has(NO_ROLE_ID)) {
+    if (!isColorButton && !isPicLiveButton) {
+      await interaction.reply({ content: 'لا يمكنك استخدام الأزرار وأنت بوضع النو رول!', ephemeral: true }).catch(() => {});
+      return;
+    }
+  }
+
+  if (customId.startsWith('perm_')) {
+    const permissionKey = customId.replace('perm_', '');
+    try {
+      const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => interaction.guild);
+      await targetGuild.roles.fetch(); 
+      
+      const rawRoleIds = [
+        "1535723352788836373", "1535720065947668500", "1535723556426481757", "1535720365127376897",
+        "1535714293784248372", "1535714856009732179", "1535716348947079322", "1535715700654604429",
+        "1535522564061929512", "1535724113690099843", "1535716161197576212", "1535718418664136845",
+        "1535718767777030237", "1535714783259787366", "1535718216037568623", "1535720112542187560",
+        "1535724553563668561", "1535713852447133786", "1535714387942445246", "1535723441540567050",
+        "1535720208671440988", "1535716064921653299", "1535724156791029801", "1535723664874676286",
+        "1535722204627599391", "1535718917807538226", "1535722539706220604", "1535719311992164442",
+        "1535720258655227966", "1535723508389257397", "1535714487565291520", "1535719233655275731",
+        "1535715153885007912", "1535718823301480628", "1535722303550132284", "1535723262204452966",
+        "1535719977351389304", "1535713953165090847", "1535722345975775323", "1535724212222959777",
+        "1535718964683087963", "1535720023384002630", "1535723308539187352", "1535715359477203014",
+        "1535716253451288647", "1535715789187842258", "1535718336585924608", "1535723397231943832",
+        "1535720158092460052", "1535722385175748669", "1535722454218178580", "1535719144052232212",
+        "1535719187861864569", "1535722498933530674", "1535719622400020722", "1535719270250713161",
+        "1535722615925248151", "1535722725706825889", "1535719507727880273", "1535722243542360105",
+        "1535714949085794456", "1535723709929623675", "1535722173283573760", "1535723604078239784",
+        "1535715241739026433", "1535718512683913276", "1535722770414051328", "1535719580167831583"
+      ];
+      
+      const uniqueRoleIds = [...new Set(rawRoleIds)];
+
+      const roles = uniqueRoleIds.map(id => targetGuild.roles.cache.get(id)).filter(r => r !== undefined);
+      
+      let components = [];
+      let currentRow = new ActionRowBuilder();
+      
+      roles.forEach((role) => {
+        if (currentRow.components.length >= 5) {
           components.push(currentRow);
+          currentRow = new ActionRowBuilder();
         }
-
-        if (components.length > 5) {
-          components = components.slice(0, 5);
-        }
-
-        await interaction.update({ content: `اختر الرول لإعطائه صلاحية **${permissionKey}** (سيتم تطبيقها عليه وعلى جميع الرولات التي فوقه تلقائياً):`, components: components });
-      } catch (e) {
-        await interaction.reply({ content: 'حدث خطأ أثناء جلب الرولات!', ephemeral: true });
+        currentRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`setperm_${permissionKey}_${role.id}`)
+            .setLabel(role.name.substring(0, 80))
+            .setStyle(ButtonStyle.Secondary)
+        );
+      });
+      if (currentRow.components.length > 0) {
+        components.push(currentRow);
       }
-      return;
+
+      if (components.length > 5) {
+        components = components.slice(0, 5);
+      }
+
+      await interaction.update({ content: `اختر الرول لإعطائه صلاحية **${permissionKey}** (سيتم تطبيقها عليه وعلى جميع الرولات التي فوقه تلقائياً):`, components: components });
+    } catch (e) {
+      await interaction.reply({ content: 'حدث خطأ أثناء جلب الرولات!', ephemeral: true });
     }
+    return;
+  }
 
-    if (customId.startsWith('setperm_')) {
-      const parts = customId.split('_');
-      const permName = parts[1];
-      const roleId = parts[2];
+  if (customId.startsWith('setperm_')) {
+    const parts = customId.split('_');
+    const permName = parts[1];
+    const roleId = parts[2];
 
-      try {
-        const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => interaction.guild);
-        const selectedRole = targetGuild.roles.cache.get(roleId);
-        if (!selectedRole) {
-          await interaction.reply({ content: 'لم يتم العثور على الرول!', ephemeral: true });
-          return;
-        }
+    try {
+      const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => interaction.guild);
+      const selectedRole = targetGuild.roles.cache.get(roleId);
+      if (!selectedRole) {
+        await interaction.reply({ content: 'لم يتم العثور على الرول!', ephemeral: true });
+        return;
+      }
 
-        const rolesToUpdate = targetGuild.roles.cache.filter(r => r.position >= selectedRole.position);
+      const rolesToUpdate = targetGuild.roles.cache.filter(r => r.position >= selectedRole.position);
 
-        let updatedCount = 0;
-        for (const role of rolesToUpdate.values()) {
-          try {
-            const currentPerms = role.permissions;
-            if (!currentPerms.has(PermissionsBitField.Flags[permName])) {
-              const newPerms = currentPerms.add(PermissionsBitField.Flags[permName]);
-              await role.setPermissions(newPerms);
-              updatedCount++;
-            }
-          } catch (err) {}
-        }
+      let updatedCount = 0;
+      for (const role of rolesToUpdate.values()) {
+        try {
+          const currentPerms = role.permissions;
+          if (!currentPerms.has(PermissionsBitField.Flags[permName])) {
+            const newPerms = currentPerms.add(PermissionsBitField.Flags[permName]);
+            await role.setPermissions(newPerms);
+            updatedCount++;
+          }
+        } catch (err) {}
+      }
 
-        const baseRoleCheckId = "1535724113690099843";
-        const baseCheckRole = targetGuild.roles.cache.get(baseRoleCheckId);
-        
-        if (baseCheckRole) {
-          for (const role of targetGuild.roles.cache.values()) {
-            if (role.position >= baseCheckRole.position || role.id === baseRoleCheckId) {
-              try {
-                if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-                  const cleanedPerms = role.permissions.remove(PermissionsBitField.Flags.ManageRoles);
-                  await role.setPermissions(cleanedPerms);
-                }
-              } catch (err) {}
-            }
+      const baseRoleCheckId = "1535724113690099843";
+      const baseCheckRole = targetGuild.roles.cache.get(baseRoleCheckId);
+      
+      if (baseCheckRole) {
+        for (const role of targetGuild.roles.cache.values()) {
+          if (role.position >= baseCheckRole.position || role.id === baseRoleCheckId) {
+            try {
+              if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+                const cleanedPerms = role.permissions.remove(PermissionsBitField.Flags.ManageRoles);
+                await role.setPermissions(cleanedPerms);
+              }
+            } catch (err) {}
           }
         }
-
-        await interaction.update({ content: `تم بنجاح إعطاء صلاحية **${permName}** لرول **${selectedRole.name}** وكل الرولات التي فوقه (${updatedCount} رول)، وتم سحب وتعديل صلاحيات مانجو رولز عنها بالكامل لتصبح بدونها!`, components: [] });
-      } catch (e) {
-        await interaction.reply({ content: 'حدث خطأ أثناء تعديل صلاحيات الرولات!', ephemeral: true });
       }
+
+      await interaction.update({ content: `تم بنجاح إعطاء صلاحية **${permName}** لرول **${selectedRole.name}** وكل الرولات التي فوقه (${updatedCount} رول)، وتم سحب وتعديل صلاحيات مانجو رولز عنها بالكامل لتصبح بدونها!`, components: [] });
+    } catch (e) {
+      await interaction.reply({ content: 'حدث خطأ أثناء تعديل صلاحيات الرولات!', ephemeral: true });
+    }
+    return;
+  }
+
+  if (customId.startsWith('norole_')) {
+    const parts = customId.split('_');
+    const durationType = parts[1]; 
+    const authorId = parts[2];
+    const targetIds = parts[3].split(',');
+
+    if (interaction.user.id !== authorId) {
+      await interaction.reply({ content: 'هذا الإجراء مخصص فقط للشخص الذي قام بتنفيذ الأمر!', ephemeral: true });
       return;
     }
 
-    if (customId.startsWith('norole_')) {
-      const parts = customId.split('_');
-      const durationType = parts[1]; 
-      const authorId = parts[2];
-      const targetIds = parts[3].split(',');
+    if (durationType === 'num') {
+      await interaction.reply({ content: 'اكتب الآن عدد الساعات (مثال: 1 أو 10 أو 23 كحد أقصى):', ephemeral: true });
+      
+      const filter = m => m.author.id === authorId && m.channel.id === interaction.channel.id;
+      const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
 
-      if (interaction.user.id !== authorId) {
-        await interaction.reply({ content: 'هذا الإجراء مخصص فقط للشخص الذي قام بتنفيذ الأمر!', ephemeral: true });
-        return;
-      }
+      collector.on('collect', async msg => {
+        try {
+          await msg.delete().catch(() => {});
+          const hours = parseInt(msg.content.trim());
+          if (isNaN(hours) || hours <= 0 || hours > 23) {
+            await interaction.followUp({ content: 'الرجاء إدخال عدد صحيح بين 1 و 23 فقط!', ephemeral: true });
+            return;
+          }
 
-      if (durationType === 'num') {
-        await interaction.reply({ content: 'اكتب الآن عدد الساعات (مثال: 1 أو 10 أو 23 كحد أقصى):', ephemeral: true });
-        
-        const filter = m => m.author.id === authorId && m.channel.id === interaction.channel.id;
-        const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
+          const durationMs = hours * 60 * 60 * 1000;
+          for (const targetUserId of targetIds) {
+            const guildMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+            if (guildMember) {
+              if (guildMember.roles.cache.has(PROTECTED_ROLE_ID)) continue;
+              await guildMember.roles.add(NO_ROLE_ID);
 
-        collector.on('collect', async msg => {
-          try {
-            await msg.delete().catch(() => {});
-            const hours = parseInt(msg.content.trim());
-            if (isNaN(hours) || hours <= 0 || hours > 23) {
-              await interaction.followUp({ content: 'الرجاء إدخال عدد صحيح بين 1 و 23 فقط!', ephemeral: true });
-              return;
-            }
-
-            const durationMs = hours * 60 * 60 * 1000;
-            for (const targetUserId of targetIds) {
-              const guildMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
-              if (guildMember) {
-                if (guildMember.roles.cache.has(PROTECTED_ROLE_ID)) continue;
-                await guildMember.roles.add(NO_ROLE_ID);
-
-                setTimeout(async () => {
-                  try {
-                    const freshMember = await interaction.guild.members.fetch(targetUserId);
-                    if (freshMember && freshMember.roles.cache.has(NO_ROLE_ID)) {
-                      await freshMember.roles.remove(NO_ROLE_ID);
-                    }
-                  } catch (e) {}
-                }, durationMs);
-              }
-            }
-
-            await interaction.message.edit({ content: `Successfully applied No Role for **${hours} Hours**`, components: [] }).catch(() => {});
-          } catch (e) {}
-        });
-        return;
-      }
-
-      try {
-        let durationText = 'Permanent (∞)';
-        let durationMs = null;
-
-        if (durationType === '1d') {
-          durationText = '1 Day';
-          durationMs = 24 * 60 * 60 * 1000;
-        } else if (durationType === '2d') {
-          durationText = '2 Days';
-          durationMs = 2 * 24 * 60 * 60 * 1000;
-        } else if (durationType === '3d') {
-          durationText = '3 Days';
-          durationMs = 3 * 24 * 60 * 60 * 1000;
-        }
-
-        for (const targetUserId of targetIds) {
-          const guildMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
-          if (guildMember) {
-            if (guildMember.roles.cache.has(PROTECTED_ROLE_ID)) continue;
-            await guildMember.roles.add(NO_ROLE_ID);
-
-            if (durationMs) {
               setTimeout(async () => {
                 try {
                   const freshMember = await interaction.guild.members.fetch(targetUserId);
@@ -1544,142 +1560,176 @@ client.on('interactionCreate', async interaction => {
               }, durationMs);
             }
           }
-        }
 
-        const mentionsFormatted = targetIds.map(id => `<@${id}>`).join(', ');
-        await interaction.update({ content: `Successfully applied No Role to ${mentionsFormatted} for duration: **${durationText}**`, components: [] });
-      } catch (e) {
-        await interaction.reply({ content: 'حدث خطأ أثناء تطبيق الإجراء!', ephemeral: true });
-      }
-      return;
-    }
-
-    if (customId.startsWith('del_all_') || customId.startsWith('del_num_')) {
-      const parts = customId.split('_');
-      const actionType = parts[1]; 
-      const targetUserId = parts[2];
-
-      if (interaction.user.id !== targetUserId) {
-        await interaction.reply({ content: 'هذا الزر ليس لك!', ephemeral: true });
-        return;
-      }
-
-      if (actionType === 'all') {
-        await interaction.deferUpdate();
-        try {
-          const channel = interaction.channel;
-          let fetched;
-          do {
-            fetched = await channel.messages.fetch({ limit: 100 });
-            const userMessages = fetched.filter(m => m.author.id === targetUserId);
-            if (userMessages.size > 0) {
-              await channel.bulkDelete(userMessages, true).catch(async () => {
-                for (const msg of userMessages.values()) {
-                  await msg.delete().catch(() => {});
-                }
-              });
-            }
-          } while (fetched.size >= 100);
-
-          await interaction.message.delete().catch(() => {});
+          await interaction.message.edit({ content: `Successfully applied No Role for **${hours} Hours**`, components: [] }).catch(() => {});
         } catch (e) {}
-        return;
-      }
-
-      if (actionType === 'num') {
-        await interaction.reply({ content: 'اكتب الآن عدد الرسائل التي تريد حذفها في هذا الروم:', ephemeral: true });
-        
-        const filter = m => m.author.id === targetUserId && m.channel.id === interaction.channel.id;
-        const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
-
-        collector.on('collect', async msg => {
-          try {
-            await msg.delete().catch(() => {});
-            const requestedCount = parseInt(msg.content.trim());
-            if (isNaN(requestedCount) || requestedCount <= 0) return;
-
-            const channel = interaction.channel;
-            let fetched;
-
-            do {
-              fetched = await channel.messages.fetch({ limit: 100 });
-              let userMessages = fetched.filter(m => m.author.id === targetUserId);
-              
-              if (userMessages.size === 0) break;
-
-              let arrayMsgs = Array.from(userMessages.values());
-              
-              if (requestedCount >= userMessages.size) {
-                await channel.bulkDelete(userMessages, true).catch(async () => {
-                  for (const m of userMessages.values()) {
-                    await m.delete().catch(() => {});
-                  }
-                });
-                break;
-              } else {
-                let toDelete = arrayNames = arrayMsgs.slice(0, requestedCount);
-                for (const m of toDelete) {
-                  await m.delete().catch(() => {});
-                }
-                break;
-              }
-            } while (true);
-
-            await interaction.message.delete().catch(() => {});
-          } catch (e) {}
-        });
-        return;
-      }
-    }
-
-    if (picLiveRoles[customId]) {
-      const roleId = picLiveRoles[customId];
-      const role = interaction.guild.roles.cache.get(roleId);
-      const roleName = role ? role.name : (customId === 'role_pic' ? 'pic' : 'live');
-      try {
-        if (member.roles.cache.has(roleId)) {
-          await member.roles.remove(roleId);
-          await interaction.reply({ content: `تم سحب الرول ${roleName}`, ephemeral: true });
-        } else {
-          await member.roles.add(roleId);
-          await interaction.reply({ content: `جاك الرول ${roleName}`, ephemeral: true });
-        }
-      } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
-      return;
-    }
-
-    const indexStr = customId.replace('role_', '');
-    const index = indexStr === '1010' ? 12 : parseInt(indexStr);
-    const targetRoleId = roleIds[index];
-
-    if (index === 0) {
-      try {
-        const rolesToRemove = roleIds.slice(1);
-        await member.roles.add(rolesToRemove); 
-        await interaction.reply({ content: 'تم ازالة اللون', ephemeral: true });
-      } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
+      });
       return;
     }
 
     try {
-      const rolesToRemove = roleIds.filter((id, i) => i !== index);
-      await member.roles.remove(rolesToRemove);
-      if (!member.roles.cache.has(targetRoleId)) {
-        await member.roles.add(targetRoleId);
-      }
-      const hasOtherRole = rolesToRemove.some(id => member.roles.cache.has(id));
-      await interaction.reply({ 
-        content: hasOtherRole ? 'تم التغيير لهذا اللون' : 'تم اختيار هذا اللون', 
-        ephemeral: true 
-      });
-    } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
-  }
-});
+      let durationText = 'Permanent (∞)';
+      let durationMs = null;
 
-const http = require('http');
-http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('I am alive');
-}).listen(3000);
+      if (durationType === '1d') {
+        durationText = '1 Day';
+        durationMs = 24 * 60 * 60 * 1000;
+      } else if (durationType === '2d') {
+        durationText = '2 Days';
+        durationMs = 2 * 24 * 60 * 60 * 1000;
+      } else if (durationType === '3d') {
+        durationText = '3 Days';
+        durationMs = 3 * 24 * 60 * 60 * 1000;
+      }
+
+      for (const targetUserId of targetIds) {
+        const guildMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+        if (guildMember) {
+          if (guildMember.roles.cache.has(PROTECTED_ROLE_ID)) continue;
+          await guildMember.roles.add(NO_ROLE_ID);
+
+          if (durationMs) {
+            setTimeout(async () => {
+              try {
+                const freshMember = await interaction.guild.members.fetch(targetUserId);
+                if (freshMember && freshMember.roles.cache.has(NO_ROLE_ID)) {
+                  await freshMember.roles.remove(NO_ROLE_ID);
+                }
+              } catch (e) {}
+            }, durationMs);
+          }
+        }
+      }
+
+      const mentionsFormatted = targetIds.map(id => `<@${id}>`).join(', ');
+      await interaction.update({ content: `Successfully applied No Role to ${mentionsFormatted} for duration: **${durationText}**`, components: [] });
+    } catch (e) {
+      await interaction.reply({ content: 'حدث خطأ أثناء تطبيق الإجراء!', ephemeral: true });
+    }
+    return;
+  }
+
+  if (customId.startsWith('del_all_') || customId.startsWith('del_num_')) {
+    const parts = customId.split('_');
+    const actionType = parts[1]; 
+    const targetUserId = parts[2];
+
+    if (interaction.user.id !== targetUserId) {
+      await interaction.reply({ content: 'هذا الزر ليس لك!', ephemeral: true });
+      return;
+    }
+
+    if (actionType === 'all') {
+      await interaction.deferUpdate();
+      try {
+        const channel = interaction.channel;
+        let fetched;
+        do {
+          fetched = await channel.messages.fetch({ limit: 100 });
+          const userMessages = fetched.filter(m => m.author.id === targetUserId);
+          if (userMessages.size > 0) {
+            await channel.bulkDelete(userMessages, true).catch(async () => {
+              for (const msg of userMessages.values()) {
+                await msg.delete().catch(() => {});
+              }
+            });
+          }
+        } while (fetched.size >= 100);
+
+        await interaction.message.delete().catch(() => {});
+      } catch (e) {}
+      return;
+    }
+
+    if (actionType === 'num') {
+      await interaction.reply({ content: 'اكتب الآن عدد الرسائل التي تريد حذفها في هذا الروم:', ephemeral: true });
+      
+      const filter = m => m.author.id === targetUserId && m.channel.id === interaction.channel.id;
+      const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
+
+      collector.on('collect', async msg => {
+        try {
+          await msg.delete().catch(() => {});
+          const requestedCount = parseInt(msg.content.trim());
+          if (isNaN(requestedCount) || requestedCount <= 0) return;
+
+          const channel = interaction.channel;
+          let fetched;
+
+          do {
+            fetched = await channel.messages.fetch({ limit: 100 });
+            let userMessages = fetched.filter(m => m.author.id === targetUserId);
+            
+            if (userMessages.size === 0) break;
+
+            let arrayMsgs = Array.from(userMessages.values());
+            
+            if (requestedCount >= userMessages.size) {
+              await channel.bulkDelete(userMessages, true).catch(async () => {
+                for (const m of userMessages.values()) {
+                  await m.delete().catch(() => {});
+                }
+              });
+              break;
+            } else {
+              let toDelete = arrayMsgs.slice(0, requestedCount);
+              for (const m of toDelete) {
+                await m.delete().catch(() => {});
+              }
+              break;
+            }
+          } while (true);
+
+          await interaction.message.delete().catch(() => {});
+        } catch (e) {}
+      });
+      return;
+    }
+  }
+
+  if (picLiveRoles[customId]) {
+    const roleId = picLiveRoles[customId];
+    const role = interaction.guild.roles.cache.get(roleId);
+    const roleName = role ? role.name : (customId === 'role_pic' ? 'pic' : 'live');
+    try {
+      if (member.roles.cache.has(roleId)) {
+        await member.roles.remove(roleId);
+        await interaction.reply({ content: `تم سحب الرول ${roleName}`, ephemeral: true });
+      } else {
+        await member.roles.add(roleId);
+        await interaction.reply({ content: `جاك الرول ${roleName}`, ephemeral: true });
+      }
+    } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
+    return;
+  }
+
+  const indexStr = customId.replace('role_', '');
+  const index = indexStr === '1010' ? 12 : parseInt(indexStr);
+  const targetRoleId = roleIds[index] || rolesMap[customId];
+
+  if (!targetRoleId) return;
+
+  if (index === 0 || customId === 'role_0') {
+    try {
+      const rolesToRemove = roleIds.slice(1);
+      await member.roles.add(rolesToRemove); 
+      await interaction.reply({ content: 'تم ازالة اللون', ephemeral: true });
+    } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
+    return;
+  }
+
+  try {
+    const rolesToRemove = roleIds.filter((id, i) => i !== index);
+    await member.roles.remove(rolesToRemove);
+    if (!member.roles.cache.has(targetRoleId)) {
+      await member.roles.add(targetRoleId);
+    }
+    const hasOtherRole = rolesToRemove.some(id => member.roles.cache.has(id));
+    await interaction.reply({ 
+      content: hasOtherRole ? 'تم التغيير لهذا اللون' : 'تم اختيار هذا اللون', 
+      ephemeral: true 
+    });
+  } catch (e) { await interaction.reply({ content: 'حدث خطأ', ephemeral: true }); }
+});
 
 client.login(process.env.TOKEN);
