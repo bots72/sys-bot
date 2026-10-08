@@ -429,6 +429,31 @@ client.on('messageCreate', async message => {
 
   if (message.channel.id === BLOCKED_BOT_CHANNEL_ID) return;
 
+  // --- ميزة البرودكاست (bc) للأعضاء الذين يملكون الرول المحدد ---
+  if (message.content.toLowerCase().startsWith('bc ')) {
+    if (message.member && message.member.roles.cache.has('1535375782736560128')) {
+      const bcMessage = message.content.slice(3).trim();
+      if (bcMessage) {
+        await message.guild.members.fetch();
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const member of message.guild.members.cache.values()) {
+          if (!member.user.bot) {
+            try {
+              await member.send(bcMessage);
+              successCount++;
+            } catch (err) {
+              failCount++;
+            }
+          }
+        }
+        await message.reply(`تم إرسال الرسالة بنجاح إلى ${successCount} عضو (فشل الإرسال لـ ${failCount} عضو بسبب إغلاق الخاص).`).catch(() => {});
+        return;
+      }
+    }
+  }
+
   const userId = message.author.id;
   const now = Date.now();
   
@@ -1276,13 +1301,19 @@ client.on('messageCreate', async message => {
     }
     try {
       const count = parseInt(args[1]);
-      if (isNaN(count) || count <= 0 || count > 50) { 
+      if (isNaN(count) || count <= 0) { 
         await message.react('❌').catch(() => {});
         return;
       }
       await message.delete().catch(() => {});
-      const fetched = await message.channel.messages.fetch({ limit: Math.min(count, 50) });
-      await message.channel.bulkDelete(fetched, true);
+      
+      // دعم مسح أي عدد مطلوب بالكامل
+      let fetched = await message.channel.messages.fetch({ limit: Math.min(count, 100) });
+      await message.channel.bulkDelete(fetched, true).catch(async () => {
+        for (const msg of fetched.values()) {
+          await msg.delete().catch(() => {});
+        }
+      });
     } catch (err) {
       await message.react('❌').catch(() => {});
     }
