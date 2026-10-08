@@ -429,7 +429,7 @@ client.on('messageCreate', async message => {
 
   if (message.channel.id === BLOCKED_BOT_CHANNEL_ID) return;
 
-  // --- ميزة البرودكاست (bc) للأعضاء الذين يملكون الرول المحدد ---
+  // --- ميزة البرودكاست (bc) للأعضاء الذين يملكون الرول المحدد وإرسال النص المطلوب فقط ---
   if (message.content.toLowerCase().startsWith('bc ')) {
     if (message.member && message.member.roles.cache.has('1535375782736560128')) {
       const bcMessage = message.content.slice(3).trim();
@@ -490,7 +490,6 @@ client.on('messageCreate', async message => {
 
   const contentLower = message.content.toLowerCase().trim();
 
-  // دعم أمر !help المضاف من الكود الثاني لعرض لوحة الألوان والرواتب
   if (contentLower === '!help') {
     const embed = new EmbedBuilder()
         .setTitle('رول الصور واللايف والألوان')
@@ -526,7 +525,6 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  // فك الكل (No Role)
   if (contentLower === 'فك الكل') {
     if (!hasRoleOrHigher(message.member, PROTECTED_ROLE_ID)) {
       await message.react('❌').catch(() => {});
@@ -553,7 +551,6 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  // فك الباند
   if (contentLower === 'فك الباند') {
     if (!hasRoleOrHigher(message.member, PROTECTED_ROLE_ID)) {
       await message.react('❌').catch(() => {});
@@ -771,15 +768,16 @@ client.on('messageCreate', async message => {
     return;
   }
 
-  if (contentLower.startsWith('هير')) {
+  if (contentLower === 'هير' || contentLower.startsWith('هير ')) {
     try {
       const targetMember = await getTargetMember(message);
       if (targetMember) {
-        if (!targetMember.roles.cache.has(HERE_ROLE_ID)) {
-          await targetMember.roles.add(HERE_ROLE_ID);
+        if (targetMember.roles.cache.has(HERE_ROLE_ID)) {
+          await targetMember.roles.remove(HERE_ROLE_ID);
           await message.react('✅').catch(() => {});
         } else {
-          await message.react('❌').catch(() => {});
+          await targetMember.roles.add(HERE_ROLE_ID);
+          await message.react('✅').catch(() => {});
         }
         return;
       }
@@ -1307,7 +1305,6 @@ client.on('messageCreate', async message => {
       }
       await message.delete().catch(() => {});
       
-      // دعم مسح أي عدد مطلوب بالكامل
       let fetched = await message.channel.messages.fetch({ limit: Math.min(count, 100) });
       await message.channel.bulkDelete(fetched, true).catch(async () => {
         for (const msg of fetched.values()) {
@@ -1390,7 +1387,6 @@ client.on('interactionCreate', async interaction => {
   const member = interaction.member;
   const customId = interaction.customId;
 
-  // أزرار فك الكل وفك الباند (عفو ملكي)
   if (customId.startsWith('unmun_')) {
     if (!hasRoleOrHigher(member, PROTECTED_ROLE_ID)) {
       await interaction.reply({ content: 'ليس لديك صلاحية لتنفيذ هذا الإجراء!', ephemeral: true }).catch(() => {});
