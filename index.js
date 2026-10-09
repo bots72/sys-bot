@@ -155,6 +155,26 @@ async function sendLogCustom(guild, content, files = []) {
   } catch (e) {}
 }
 
+// دالة فحص ذكية لرصد أي رابط أو كلمة discord.gg/
+function containsLinkOrInvite(text) {
+  if (!text) return false;
+  const cleanedText = text.toLowerCase().replace(/\s+/g, '');
+  
+  // فحص مباشر لـ discord.gg/ بأي صيغة
+  if (cleanedText.includes('discord.gg/') || cleanedText.includes('discord.gg')) {
+    return true;
+  }
+  
+  // فحص روابط الدعوات الشهيرة
+  if (cleanedText.includes('discord.me') || cleanedText.includes('discord.io') || cleanedText.includes('dsc.gg') || cleanedText.includes('invite.gg') || cleanedText.includes('discord.com/invite')) {
+    return true;
+  }
+
+  // فحص عام شامل لأي رابط أو موقع
+  const generalLinkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.(com|net|org|gg|me|io|xyz|info|biz|co|us|uk|de|ru|fr|it|es|br|ca|nl|se|no|pl|sa|ae|qa|eg|kw|bh|om)\b[^\s]*)/gi;
+  return generalLinkRegex.test(text);
+}
+
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
 
@@ -313,22 +333,6 @@ function hasRoleOrHigher(member, roleId) {
   return memberHighest.position >= targetRole.position;
 }
 
-// دالة ذكية فاحصة للروابط والدعوات (تغطي كل أنواع الروابط ودعوات ديسكورد بأي صيغة)
-function containsLinkOrInvite(text) {
-  if (!text) return false;
-  const lower = text.toLowerCase();
-  
-  // فحص مباشر لأي روابط أو دعوات ديسكورد أو دومينات
-  const strictRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li|com\/invite)\/[^\s]+)|(discordapp\.com\/invite\/[^\s]+)|([a-zA-Z0-9-]+\.(com|net|org|gg|me|io|xyz|info|biz|co|us|uk|de|ru|fr|it|es|br|ca|nl|se|no|pl|sa|ae|qa|eg|kw|bh|om)\b[^\s]*)/gi;
-  
-  // فحص إضافي للتحايل (مثل كتابة discord . gg أو روابط مخفية)
-  if (lower.includes('discord.gg') || lower.includes('discord.me') || lower.includes('discord.io') || lower.includes('dsc.gg') || lower.includes('invite.gg')) {
-    return true;
-  }
-
-  return strictRegex.test(text);
-}
-
 client.on('guildMemberAdd', async member => {
   try {
     const autoRole = member.guild.roles.cache.get(AUTO_JOIN_ROLE_ID);
@@ -374,7 +378,7 @@ client.on('messageDelete', async message => {
   await sendLogCustom(message.guild, logText, attachmentsArr);
 });
 
-// منع التعديل لإضافة روابط لاحقاً (طريقة برو بوت)
+// ميزة رصد التعديل ومنع الروابط التي تحاول التخفي عبر تعديل الرسالة
 client.on('messageUpdate', async (oldMessage, newMessage) => {
   if (!newMessage.guild || newMessage.author?.bot) return;
   if (newMessage.member?.permissions.has(PermissionsBitField.Flags.Administrator) || newMessage.member?.roles.cache.has(PROTECTED_ROLE_ID)) return;
@@ -452,11 +456,11 @@ client.on('messageCreate', async message => {
 
   if (message.channel.id === BLOCKED_BOT_CHANNEL_ID) return;
 
-  // --- نظام منع الروابط ودعوات السيرفرات الذكي والصارم جداً (مثل برو بوت في كل الرومات) ---
+  // --- نظام المنع الذكي والشامل لكل أنواع الروابط وخاصة discord.gg/ ---
   if (containsLinkOrInvite(message.content) || (message.embeds && message.embeds.length > 0)) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) && !message.member.roles.cache.has(PROTECTED_ROLE_ID)) {
       await message.delete().catch(() => {});
-      return; // إيقاف تنفيذ البوت تماماً للرسالة لضمان عدم وصولها أبداً
+      return; // إيقاف الكود فوراً لضمان حذف الرسالة وسرعة الاستجابة
     }
   }
 
@@ -621,7 +625,7 @@ client.on('messageCreate', async message => {
       let userVoiceRank = 1;
 
       const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 100 + b[1].chatXp) - (a[1].chatLevel * 100 + a[1].chatXp));
-      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + b[1].voiceXp));
+      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + a[1].voiceXp));
 
       totalChatSpeakers = Math.max(sortedByChat.length, targetData.chatLevel > 0 || targetData.chatXp > 0 ? 1 : 0);
       totalVoiceSpeakers = Math.max(sortedByVoice.length, targetData.voiceLevel > 0 || targetData.voiceXp > 0 ? 1 : 0);
