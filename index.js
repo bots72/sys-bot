@@ -308,9 +308,25 @@ async function getTargetMember(message) {
 function hasRoleOrHigher(member, roleId) {
   if (member.permissions.has(PermissionsBitField.Flags.Administrator)) return true;
   const targetRole = member.guild.roles.cache.get(roleId);
-  if (!targetRuleId && !targetRole) return false;
+  if (!targetRole) return false;
   const memberHighest = member.roles.highest;
   return memberHighest.position >= targetRole.position;
+}
+
+// دالة ذكية فاحصة للروابط والدعوات (تغطي كل أنواع الروابط ودعوات ديسكورد بأي صيغة)
+function containsLinkOrInvite(text) {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  
+  // فحص مباشر لأي روابط أو دعوات ديسكورد أو دومينات
+  const strictRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li|com\/invite)\/[^\s]+)|(discordapp\.com\/invite\/[^\s]+)|([a-zA-Z0-9-]+\.(com|net|org|gg|me|io|xyz|info|biz|co|us|uk|de|ru|fr|it|es|br|ca|nl|se|no|pl|sa|ae|qa|eg|kw|bh|om)\b[^\s]*)/gi;
+  
+  // فحص إضافي للتحايل (مثل كتابة discord . gg أو روابط مخفية)
+  if (lower.includes('discord.gg') || lower.includes('discord.me') || lower.includes('discord.io') || lower.includes('dsc.gg') || lower.includes('invite.gg')) {
+    return true;
+  }
+
+  return strictRegex.test(text);
 }
 
 client.on('guildMemberAdd', async member => {
@@ -358,6 +374,16 @@ client.on('messageDelete', async message => {
   await sendLogCustom(message.guild, logText, attachmentsArr);
 });
 
+// منع التعديل لإضافة روابط لاحقاً (طريقة برو بوت)
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+  if (!newMessage.guild || newMessage.author?.bot) return;
+  if (newMessage.member?.permissions.has(PermissionsBitField.Flags.Administrator) || newMessage.member?.roles.cache.has(PROTECTED_ROLE_ID)) return;
+
+  if (containsLinkOrInvite(newMessage.content) || (newMessage.embeds && newMessage.embeds.length > 0)) {
+    await newMessage.delete().catch(() => {});
+  }
+});
+
 client.on('guildBanAdd', async ban => {
   try {
     const fetchedLogs = await ban.guild.fetchAuditLogs({
@@ -381,7 +407,7 @@ client.on('guildBanRemove', async ban => {
     });
     const unbanLog = fetchedLogs.entries.first();
     let executorTag = 'مجهول';
-    if (unbanLog && unbanLog.target && unbanLog.target.id === ban.user.id && (Date.now() - unbanLinkCreateTimestamp < 5000)) {
+    if (unbanLog && unbanLog.target && unbanLog.target.id === ban.user.id && (Date.now() - unbanLog.createdTimestamp < 5000)) {
       executorTag = `<@${unbanLog.executor.id}>`;
     }
     await sendLogCustom(ban.guild, `سحب الباند / فك الباند\nتم فك الباند عن العضو: <@${ban.user.id}>\nبواسطة: ${executorTag}`);
@@ -426,15 +452,11 @@ client.on('messageCreate', async message => {
 
   if (message.channel.id === BLOCKED_BOT_CHANNEL_ID) return;
 
-  // --- نظام ذكي جداً ومطلق لمنع أي رابط أو دعوة ديسكورد نهائياً وقبل نشرها في أي روم (حتى شات الرومات الصوتية) ---
-  const antiLinkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li|com\/invite)\/[^\s]+)|(discordapp\.com\/invite\/[^\s]+)|([a-zA-Z0-9-]+\.(com|net|org|gg|me|io|xyz|info|biz|co|us|uk|de|ru|fr|it|es|br|ca|nl|se|no|pl|sa|ae|qa|eg|kw|bh|om)\b[^\s]*)/gi;
-  
-  if (antiLinkRegex.test(message.content) || (message.embeds && message.embeds.length > 0)) {
+  // --- نظام منع الروابط ودعوات السيرفرات الذكي والصارم جداً (مثل برو بوت في كل الرومات) ---
+  if (containsLinkOrInvite(message.content) || (message.embeds && message.embeds.length > 0)) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) && !message.member.roles.cache.has(PROTECTED_ROLE_ID)) {
-      try {
-        await message.delete();
-      } catch (e) {}
-      return; // إيقاف تنفيذ أي شي آخر لضمان عدم وصول الرسالة أو التفاعل معها نهائياً
+      await message.delete().catch(() => {});
+      return; // إيقاف تنفيذ البوت تماماً للرسالة لضمان عدم وصولها أبداً
     }
   }
 
@@ -599,7 +621,7 @@ client.on('messageCreate', async message => {
       let userVoiceRank = 1;
 
       const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 100 + b[1].chatXp) - (a[1].chatLevel * 100 + a[1].chatXp));
-      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + a[1].voiceXp));
+      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + b[1].voiceXp));
 
       totalChatSpeakers = Math.max(sortedByChat.length, targetData.chatLevel > 0 || targetData.chatXp > 0 ? 1 : 0);
       totalVoiceSpeakers = Math.max(sortedByVoice.length, targetData.voiceLevel > 0 || targetData.voiceXp > 0 ? 1 : 0);
