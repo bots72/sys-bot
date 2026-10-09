@@ -54,7 +54,6 @@ const roleIds = [
   "1535432094635921510"  // 1010
 ];
 
-// دمج خريطة الألوان المضافة من الكود الثاني لضمان التوافق التام
 const rolesMap = {
     'role_0': '1535430257316864152',
     'role_1': '1535430309326233772',
@@ -106,7 +105,7 @@ const NEW_IMAGE_CHANNEL_ID = '1535489711420735549';
 
 const REMOVE_ROLE_CHANNEL_ID = '1535821718751289354';
 const ADDED_ROLE_CHANNEL_ID = '1535822130342658118';
-const BLOCKED_BOT_CHANNEL_ID = '1535822130342658119'; // تم تعريف المتغير لمنع الأخطاء البرمجية
+const BLOCKED_BOT_CHANNEL_ID = '1535822130342658119';
 
 function getChatXpRequired(level) {
   return 100 + (level * 50);
@@ -199,7 +198,6 @@ client.once('ready', async () => {
     }
   }
 
-  // روم الألوان القديم (تحديث كل 15 ثانية)
   const colorChannel = await client.channels.fetch(COLOR_CHANNEL_ID).catch(() => null);
   if (colorChannel) {
     setInterval(async () => {
@@ -235,7 +233,6 @@ client.once('ready', async () => {
     }, 15000);
   }
 
-  // روم الألوان الجديد
   const newColorChannel = await client.channels.fetch(NEW_COLOR_CHANNEL_ID).catch(() => null);
   if (newColorChannel) {
     setInterval(async () => {
@@ -429,10 +426,23 @@ client.on('messageCreate', async message => {
 
   if (message.channel.id === BLOCKED_BOT_CHANNEL_ID) return;
 
-  // --- ميزة البرودكاست (bc) للأعضاء الذين يملكون الرول المحدد وإرسال النص المطلوب فقط ---
+  // --- منع أي روابط في السيرفر وحذفها فوراً وتظهر علامة حمراء عند المرسل فقط ---
+  const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/gi;
+  if (urlRegex.test(message.content)) {
+    // استثناء الأدمن أو الرولات التي تحددها إذا رغبت، ولكن الطلب يشمل أي رابط في السيرفر
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) && !message.member.roles.cache.has(PROTECTED_ROLE_ID)) {
+      await message.delete().catch(() => {});
+      return;
+    }
+  }
+
+  // --- ميزة البرودكاست (bc) ---
   if (message.content.toLowerCase().startsWith('bc ')) {
     if (message.member && message.member.roles.cache.has('1535375782736560128')) {
-      const bcMessage = message.content.slice(3).trim();
+      const argsArray = message.content.trim().split(/ +/);
+      argsArray.shift();
+      const bcMessage = argsArray.join(' ');
+      
       if (bcMessage) {
         await message.guild.members.fetch();
         let successCount = 0;
@@ -587,7 +597,7 @@ client.on('messageCreate', async message => {
       let userVoiceRank = 1;
 
       const sortedByChat = Array.from(userLevels.entries()).sort((a, b) => (b[1].chatLevel * 100 + b[1].chatXp) - (a[1].chatLevel * 100 + a[1].chatXp));
-      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + b[1].voiceXp));
+      const sortedByVoice = Array.from(userLevels.entries()).sort((a, b) => (b[1].voiceLevel * 100 + b[1].voiceXp) - (a[1].voiceLevel * 100 + a[1].voiceXp));
 
       totalChatSpeakers = Math.max(sortedByChat.length, targetData.chatLevel > 0 || targetData.chatXp > 0 ? 1 : 0);
       totalVoiceSpeakers = Math.max(sortedByVoice.length, targetData.voiceLevel > 0 || targetData.voiceXp > 0 ? 1 : 0);
