@@ -426,10 +426,10 @@ client.on('messageCreate', async message => {
 
   if (message.channel.id === BLOCKED_BOT_CHANNEL_ID) return;
 
-  // --- منع أي روابط في السيرفر وحذفها فوراً وتظهر علامة حمراء عند المرسل فقط ---
-  const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/gi;
-  if (urlRegex.test(message.content)) {
-    // استثناء الأدمن أو الرولات التي تحددها إذا رغبت، ولكن الطلب يشمل أي رابط في السيرفر
+  // --- نظام ذكي جداً لمنع أي رابط (بما فيها روابط ديسكورد والإنفاست وكافة الروابط بجميع الرومات حتى الصوتية) ---
+  const smartLinkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li|com\/invite)\/[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/gi;
+  
+  if (smartLinkRegex.test(message.content) || (message.embeds && message.embeds.length > 0)) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) && !message.member.roles.cache.has(PROTECTED_ROLE_ID)) {
       await message.delete().catch(() => {});
       return;
