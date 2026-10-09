@@ -308,7 +308,7 @@ async function getTargetMember(message) {
 function hasRoleOrHigher(member, roleId) {
   if (member.permissions.has(PermissionsBitField.Flags.Administrator)) return true;
   const targetRole = member.guild.roles.cache.get(roleId);
-  if (!targetRole) return false;
+  if (!targetRuleId && !targetRole) return false;
   const memberHighest = member.roles.highest;
   return memberHighest.position >= targetRole.position;
 }
@@ -381,7 +381,7 @@ client.on('guildBanRemove', async ban => {
     });
     const unbanLog = fetchedLogs.entries.first();
     let executorTag = 'مجهول';
-    if (unbanLog && unbanLog.target && unbanLog.target.id === ban.user.id && (Date.now() - unbanLog.createdTimestamp < 5000)) {
+    if (unbanLog && unbanLog.target && unbanLog.target.id === ban.user.id && (Date.now() - unbanLinkCreateTimestamp < 5000)) {
       executorTag = `<@${unbanLog.executor.id}>`;
     }
     await sendLogCustom(ban.guild, `سحب الباند / فك الباند\nتم فك الباند عن العضو: <@${ban.user.id}>\nبواسطة: ${executorTag}`);
@@ -426,13 +426,15 @@ client.on('messageCreate', async message => {
 
   if (message.channel.id === BLOCKED_BOT_CHANNEL_ID) return;
 
-  // --- نظام ذكي جداً لمنع أي رابط (بما فيها روابط ديسكورد والإنفاست وكافة الروابط بجميع الرومات حتى الصوتية) ---
-  const smartLinkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li|com\/invite)\/[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/gi;
+  // --- نظام ذكي جداً ومطلق لمنع أي رابط أو دعوة ديسكورد نهائياً وقبل نشرها في أي روم (حتى شات الرومات الصوتية) ---
+  const antiLinkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.(gg|io|me|li|com\/invite)\/[^\s]+)|(discordapp\.com\/invite\/[^\s]+)|([a-zA-Z0-9-]+\.(com|net|org|gg|me|io|xyz|info|biz|co|us|uk|de|ru|fr|it|es|br|ca|nl|se|no|pl|sa|ae|qa|eg|kw|bh|om)\b[^\s]*)/gi;
   
-  if (smartLinkRegex.test(message.content) || (message.embeds && message.embeds.length > 0)) {
+  if (antiLinkRegex.test(message.content) || (message.embeds && message.embeds.length > 0)) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) && !message.member.roles.cache.has(PROTECTED_ROLE_ID)) {
-      await message.delete().catch(() => {});
-      return;
+      try {
+        await message.delete();
+      } catch (e) {}
+      return; // إيقاف تنفيذ أي شي آخر لضمان عدم وصول الرسالة أو التفاعل معها نهائياً
     }
   }
 
